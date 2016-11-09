@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans-2.5.xsd
+       http://www.springframework.org/schema/context
+       http://www.springframework.org/schema/context/spring-context-2.5.xsd
+       http://www.springframework.org/schema/tx
+       http://www.springframework.org/schema/tx/spring-tx-2.5.xsd
+       http://www.springframework.org/schema/aop
+       http://www.springframework.org/schema/aop/spring-aop-2.5.xsd"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns="http://www.springframework.org/schema/beans">
+    <!--配置dao-->
+    <bean id="userDao" class="com.one.dao.UserDAOJdbc">
+        <!--<property name="dataSource" ref="dataSource"/>-->
+        <!--换成了hibernate-->
+        <property name="sessionFactory" ref="sessionFactory"/>
+    </bean>
+    <!--配置service-->
+    <bean id="userService" class="com.one.service.UserServiceImpl">
+        <property name="dao" ref="userDao"></property>
+    </bean>
+    <!--配置action-->
+    <bean id="oneAction" class="com.one.OneAction" scope="prototype">
+        <property name="service" ref="userService"></property>
+    </bean>
+    
+
+
+
+    <!--配置mysql-->
+    <context:property-placeholder location="WEB-INF/config/jdbc.properties"/>
+    <bean class="org.apache.commons.dbcp.BasicDataSource" id="dataSource">
+        <property name="driverClassName" value="${driverClassName}" />
+        <property name="url" value="${url}" />
+        <property name="username" value="${username}" />
+        <property name="password" value="${password}" />
+    </bean>
+    <!--配置事务管理者  管理上面的数据连接池-->
+    <!--<bean class="org.springframework.jdbc.datasource.DataSourceTransactionManager" id="transactionManager">-->
+        <!--<property name="dataSource" ref="dataSource"/>-->
+    <!--</bean>-->
+    <!--由hibernate来做 声明hibernate的transactionManager-->
+    <bean id="transactionManager" class="org.springframework.orm.hibernate3.HibernateTransactionManager">
+        <property name="sessionFactory" ref="sessionFactory"/>
+    </bean>
+    <!--声明hibernate的sessionFactory-->
+    <bean id="sessionFactory" class="org.springframework.orm.hibernate3.LocalSessionFactoryBean">
+        <!--注入datasource属性-->
+        <property name="dataSource" ref="dataSource"/>
+        <property name="hibernateProperties">
+            <props>
+                <!--声明hibernate的属性-->
+                <prop key="hibernate.dialect">org.hibernate.dialect.MySQL5Dialect</prop>
+                <prop key="hibernate.show_sql">true</prop>
+                <prop key="hibernate.current_session_context_class">thread</prop>
+            </props>
+        </property>
+        <!--将hibernate的配置文件配到这里-->
+        <property name="mappingResources">
+            <list>
+                <value>com/one/pojos/User.hbm.xml</value>
+            </list>
+        </property>
+    </bean>
+
+    
+    
+    <!--配置一个事务管理设备-->
+    <tx:advice id="txAdvice" transaction-manager="transactionManager">
+        <tx:attributes>
+            <tx:method name="*" propagation="REQUIRED"/>
+        </tx:attributes>
+    </tx:advice>
+    <!--配置切面 切点+通知-->
+    <aop:config>
+        <aop:pointcut id="pointcuter" expression="execution(* com..*Service.*(..))"/>
+        <aop:advisor pointcut-ref="pointcuter" advice-ref="txAdvice"  ></aop:advisor>
+    </aop:config>
+
+
+</beans>
